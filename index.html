@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>刷題練習小網頁</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 2em; }
+    .question { font-weight: bold; margin-bottom: 1em; }
+    .options button { display: block; width: 100%; margin: 0.5em 0; padding: 0.5em; }
+    .feedback { margin-top: 1em; font-weight: bold; }
+    .next-btn { margin-top: 2em; }
+    #modeSelection { margin-bottom: 1em; }
+  </style>
+</head>
+<body>
+  <h2>刷題練習系統</h2>
+  <input type="file" id="fileInput" accept=".json"><br><br>
+
+  <div id="modeSelection" style="display: none;">
+    <label>選擇模式：</label>
+    <select id="mode">
+      <option value="sequential">逐題練習</option>
+      <option value="random">隨機出題</option>
+    </select>
+    <button onclick="startQuiz()">開始練習</button>
+  </div>
+
+  <div id="quizContainer" style="display: none;">
+    <div id="qid"></div>
+    <div class="question" id="question"></div>
+    <div class="options" id="options"></div>
+    <div class="feedback" id="feedback"></div>
+    <button class="next-btn" onclick="nextQuestion()">下一題</button>
+  </div>
+
+  <script>
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let allowAnswer = true;
+    let mode = 'sequential';
+    let questionOrder = [];
+
+    document.getElementById('fileInput').addEventListener('change', function(evt) {
+      const file = evt.target.files[0];
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        questions = JSON.parse(e.target.result);
+        document.getElementById('fileInput').style.display = 'none';
+        document.getElementById('modeSelection').style.display = 'block';
+      };
+      reader.readAsText(file);
+    });
+
+    function startQuiz() {
+      mode = document.getElementById('mode').value;
+      currentQuestionIndex = 0;
+
+      if (mode === 'random') {
+        questionOrder = [...Array(questions.length).keys()];
+        for (let i = questionOrder.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [questionOrder[i], questionOrder[j]] = [questionOrder[j], questionOrder[i]];
+        }
+      }
+
+      document.getElementById('modeSelection').style.display = 'none';
+      document.getElementById('quizContainer').style.display = 'block';
+      showQuestion();
+    }
+
+    function showQuestion() {
+      allowAnswer = true;
+      const index = (mode === 'random') ? questionOrder[currentQuestionIndex] : currentQuestionIndex;
+      const q = questions[index];
+
+      document.getElementById('qid').textContent = `題號：${q.id}`;
+      document.getElementById('question').textContent = q.question;
+      const optionsContainer = document.getElementById('options');
+      optionsContainer.innerHTML = '';
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.onclick = () => selectOption(i);
+        optionsContainer.appendChild(btn);
+      });
+      document.getElementById('feedback').textContent = '';
+    }
+
+    function selectOption(index) {
+      if (!allowAnswer) return;
+      allowAnswer = false;
+      const qIndex = (mode === 'random') ? questionOrder[currentQuestionIndex] : currentQuestionIndex;
+      const q = questions[qIndex];
+      const feedback = document.getElementById('feedback');
+      if (index === q.answer) {
+        feedback.textContent = '✅ 答對了！';
+        feedback.style.color = 'green';
+      } else {
+        feedback.textContent = `❌ 答錯了，正確答案是：${q.options[q.answer]}`;
+        feedback.style.color = 'red';
+      }
+    }
+
+    function nextQuestion() {
+      currentQuestionIndex = (currentQuestionIndex + 1) % questions.length;
+      showQuestion();
+    }
+  </script>
+</body>
+</html>
